@@ -181,15 +181,13 @@ emac_mem_buf_t* ESPHostEMAC::lowLevelInput() {
   if (size == 0)
     return nullptr;
 
-  emac_mem_buf_t* emacBuf = memoryManager->alloc_heap(size, ESPHOST_BUFF_ALIGNMENT);
-  if (emacBuf != nullptr) {
-    uint8_t if_num = 0;
-    uint8_t* buf = CEspControl::getInstance().getStationRx(if_num, size);
-    memcpy(memoryManager->get_ptr(emacBuf), buf, size);
-    delete[] buf;
-  }
-
-  return emacBuf;
+  emac_mem_buf_t* buf = memoryManager->alloc_heap(size, ESPHOST_BUFF_ALIGNMENT);
+  if (buf == nullptr)
+    return nullptr;
+  uint8_t* data = (uint8_t*) (memoryManager->get_ptr(buf));
+  uint8_t if_num = 0;
+  CEspControl::getInstance().getStationRx(if_num, data, size);
+  return buf;
 }
 
 /**
