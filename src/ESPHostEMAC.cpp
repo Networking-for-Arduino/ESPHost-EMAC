@@ -2,6 +2,12 @@
 #include "ESPHostEMAC_config.h"
 #include "CEspControl.h"
 
+#include <mbed_events.h>
+
+using namespace mbed;
+using namespace rtos;
+using namespace std::chrono_literals;
+
 ESPHostEMAC::ESPHostEMAC() :
     memoryManager(NULL) {
 

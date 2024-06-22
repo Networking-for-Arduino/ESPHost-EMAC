@@ -93,7 +93,7 @@ private:
   static bool wifiHwInitialized;
   WifiApCfg_t ap;
   volatile bool isConnected;
-  Mutex mutex;
+  rtos::Mutex mutex;
   uint8_t debug_level;
 
   static int initEventCb(CCtrlMsgWrapper *resp);

@@ -10,10 +10,6 @@
 #include "EMAC.h"
 #include "rtos.h"
 
-using namespace mbed;
-using namespace rtos;
-using namespace std::chrono_literals;
-
 class ESPHostEMAC : public EMAC {
 public:
   ESPHostEMAC();
@@ -151,7 +147,7 @@ private:
   int receiveTaskHandle;
 
   EMACMemoryManager* memoryManager;
-  Mutex wifiLockMutex;
+  rtos::Mutex wifiLockMutex;
 
   emac_link_input_cb_t emac_link_input_cb;
   emac_link_state_change_cb_t emac_link_state_cb;
