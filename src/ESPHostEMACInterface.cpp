@@ -26,8 +26,8 @@ static void debug(int condition, const char *format, ...) {
   }
 }
 
-ESPHostEMACInterface::ESPHostEMACInterface(bool debug, EMAC &emac, OnboardNetworkStack &stack) :
-    EMACInterface(emac, stack), isConnected(false) {
+ESPHostEMACInterface::ESPHostEMACInterface(bool debug, ESPHostEMAC &emac, OnboardNetworkStack &stack) :
+    EMACInterface(emac, stack), isConnected(false), mutex(emac.wifiLockMutex) {
 
   espHostObject = this;
   ap.ssid[0] = 0;
@@ -52,7 +52,6 @@ int ESPHostEMACInterface::set_credentials(const char *ssid, const char *pass, ns
     }
   }
 
-  mutex.lock();
   memset(ap.ssid, 0, sizeof(ap.ssid));
   memcpy(ap.ssid, ssid, sizeof(ap.ssid));
 
@@ -62,7 +61,6 @@ int ESPHostEMACInterface::set_credentials(const char *ssid, const char *pass, ns
   }
   ap.encryption_mode = nsapi_sec2esp_sec(security);
 
-  mutex.unlock();
   debug(debug_level >= DEBUG_LOG, "ESPHostEMACInterface : set credential OK %s %s \n", ap.ssid, ap.pwd);
   return NSAPI_ERROR_OK;
 }
@@ -81,10 +79,7 @@ nsapi_error_t ESPHostEMACInterface::connect(const char *ssid, const char *pass, 
     ret = NSAPI_ERROR_UNSUPPORTED;
   } else {
 
-    mutex.lock();
     nsapi_error_t credentials_status = set_credentials(ssid, pass, security);
-    mutex.unlock();
-
     if (credentials_status) {
       debug(debug_level >= DEBUG_WARNING, "ESPHostEMACInterface : connect unable to set credential\n");
       ret = credentials_status;
@@ -116,7 +111,6 @@ bool ESPHostEMACInterface::initHW() {
 
 nsapi_error_t ESPHostEMACInterface::connect() {
   nsapi_error_t ret;
-  mutex.lock();
 
   if (!initHW())
     return false;
@@ -129,11 +123,14 @@ nsapi_error_t ESPHostEMACInterface::connect() {
     ret = NSAPI_ERROR_IS_CONNECTED;
   } else {
     debug(debug_level >= DEBUG_INFO, "ESPHostEMACInterface : connecting WIFI\n");
+    mutex.lock();
     if (CEspControl::getInstance().connectAccessPoint(ap) != ESP_CONTROL_OK) {
+      mutex.unlock();
       debug(debug_level >= DEBUG_WARNING, "ESPHostEMACInterface : Connect failed; wrong parameter ?\n");
       ret = NSAPI_ERROR_PARAMETER;
     } else {
       CEspControl::getInstance().getAccessPointConfig(ap);
+      mutex.unlock();
       debug(debug_level >= DEBUG_INFO, "ESPHostEMACInterface : connecting EMAC\n");
       ret = EMACInterface::connect();
       /* EMAC is waiting for UP conection , UP means we join an hotspot and  IP services running */
@@ -143,26 +140,28 @@ nsapi_error_t ESPHostEMACInterface::connect() {
         ret = NSAPI_ERROR_OK;
       } else {
         debug(debug_level >= DEBUG_WARNING, "ESPHostEMACInterface : EMAC Fail to connect NSAPI_ERROR %d\n", ret);
+        mutex.lock();
         CEspControl::getInstance().disconnectAccessPoint();
+        mutex.unlock();
         EMACInterface::disconnect();
         ret = NSAPI_ERROR_CONNECTION_TIMEOUT;
       }
     }
   }
-  mutex.unlock();
 
   return ret;
 }
 
 nsapi_error_t ESPHostEMACInterface::disconnect() {
   nsapi_error_t ret;
-  mutex.lock();
 
   if (isConnected == false) {
     ret = NSAPI_ERROR_NO_CONNECTION;
   } else {
     debug(debug_level >= DEBUG_INFO, "ESPHostEMACInterface : disconnecting EspHost WIFI and EMAC\n");
+    mutex.lock();
     int rv = CEspControl::getInstance().disconnectAccessPoint();
+    mutex.unlock();
     if (rv != ESP_CONTROL_OK) {
       debug(debug_level >= DEBUG_WARNING, "ESPHost disconnect command failed\n");
       ret = NSAPI_ERROR_DEVICE_ERROR;
@@ -172,25 +171,23 @@ nsapi_error_t ESPHostEMACInterface::disconnect() {
     isConnected = false;
     EMACInterface::disconnect();
   }
-  mutex.unlock();
   return ret;
 }
 
 int8_t ESPHostEMACInterface::get_rssi() {
-  mutex.lock();
   int8_t ret = 0;
   if (isConnected) {
     WifiApCfg_t ap;
+    mutex.lock();
     CEspControl::getInstance().getAccessPointConfig(ap);
+    mutex.unlock();
     ret = ap.rssi;
   }
-  mutex.unlock();
   debug(debug_level >= DEBUG_INFO, "ESPHostEMACInterface : Get RSSI return %d\n", ret);
   return ret;
 }
 
 int ESPHostEMACInterface::scan(WiFiAccessPoint *res, unsigned int count) {
-  mutex.lock();
   if (count == 0)
     return MAX_AP_COUNT;
   if (count > MAX_AP_COUNT) {
@@ -201,7 +198,9 @@ int ESPHostEMACInterface::scan(WiFiAccessPoint *res, unsigned int count) {
     return false;
 
   std::vector<AccessPoint_t> accessPoints;
+  mutex.lock();
   int rv = CEspControl::getInstance().getAccessPointScanList(accessPoints);
+  mutex.unlock();
   if (rv != ESP_CONTROL_OK)
     return NSAPI_ERROR_DEVICE_ERROR;
   count = accessPoints.size();
@@ -220,7 +219,6 @@ int ESPHostEMACInterface::scan(WiFiAccessPoint *res, unsigned int count) {
     ap.channel = accessPoints[i].channel;
     res[i] = WiFiAccessPoint(ap);
   }
-  mutex.unlock();
   return count;
 }
 

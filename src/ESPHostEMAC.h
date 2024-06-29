@@ -147,6 +147,8 @@ private:
   int receiveTaskHandle;
 
   EMACMemoryManager* memoryManager;
+
+  friend class ESPHostEMACInterface; // to share the mutex
   rtos::Mutex wifiLockMutex;
 
   emac_link_input_cb_t emac_link_input_cb;

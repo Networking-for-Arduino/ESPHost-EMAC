@@ -124,6 +124,7 @@ bool ESPHostEMAC::power_up(void) {
  *
  */
 void ESPHostEMAC::power_down(void) {
+  mbed::mbed_event_queue()->cancel(receiveTaskHandle);
 
 }
 
@@ -136,9 +137,6 @@ void ESPHostEMAC::power_down(void) {
  * @return     True if the packet was send successfully, False otherwise
  */
 bool ESPHostEMAC::link_out(emac_mem_buf_t *buf) {
-
-  emac_mem_buf_t* chain = buf;
-
   if (buf == NULL)
     return false;
 
@@ -156,28 +154,26 @@ bool ESPHostEMAC::link_out(emac_mem_buf_t *buf) {
     memoryManager->free(buf);
     buf = copy_buf;
   }
-
+  wifiLockMutex.lock();
   uint16_t len = memoryManager->get_len(buf);
   uint8_t* data = (uint8_t*) (memoryManager->get_ptr(buf));
   uint8_t ifn = 0;
   int error = CEspControl::getInstance().sendBuffer(ESP_STA_IF, ifn, data, len);
+  wifiLockMutex.unlock();
   memoryManager->free(buf);
-
-  if (error != ESP_CONTROL_OK)
-    return false;
-
-  return true;
+  
+  return (error == ESP_CONTROL_OK);
 }
 
 void ESPHostEMAC::receiveTask() {
 
+  wifiLockMutex.lock();
   CEspControl::getInstance().communicateWithEsp();
+  wifiLockMutex.unlock();
 
   emac_mem_buf_t* payload = lowLevelInput();
-  if (payload != NULL) {
-    if (emac_link_input_cb) {
-      emac_link_input_cb(payload);
-    }
+  if (payload != NULL && emac_link_input_cb) {
+    emac_link_input_cb(payload);
   }
 }
 
@@ -190,9 +186,11 @@ emac_mem_buf_t* ESPHostEMAC::lowLevelInput() {
   emac_mem_buf_t* buf = memoryManager->alloc_heap(size, ESPHOST_BUFF_ALIGNMENT);
   if (buf == nullptr)
     return nullptr;
+  wifiLockMutex.lock();
   uint8_t* data = (uint8_t*) (memoryManager->get_ptr(buf));
   uint8_t if_num = 0;
   CEspControl::getInstance().getStationRx(if_num, data, size);
+  wifiLockMutex.unlock();
   return buf;
 }
 

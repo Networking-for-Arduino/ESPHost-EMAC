@@ -18,7 +18,7 @@
  */
 class ESPHostEMACInterface : public WiFiInterface, public EMACInterface {
 public:
-  ESPHostEMACInterface(bool debug = false, EMAC &emac = ESPHostEMAC::get_instance(), OnboardNetworkStack &stack = OnboardNetworkStack::get_default_instance());
+  ESPHostEMACInterface(bool debug = false, ESPHostEMAC &emac = ESPHostEMAC::get_instance(), OnboardNetworkStack &stack = OnboardNetworkStack::get_default_instance());
 
   /** Start the interface
    *
@@ -93,7 +93,7 @@ private:
   static bool wifiHwInitialized;
   WifiApCfg_t ap;
   volatile bool isConnected;
-  rtos::Mutex mutex;
+  rtos::Mutex& mutex;
   uint8_t debug_level;
 
   static int initEventCb(CCtrlMsgWrapper *resp);
