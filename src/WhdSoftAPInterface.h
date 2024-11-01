@@ -58,13 +58,13 @@ public:
     int start(const char *ssid, const char *pass, nsapi_security_t security, uint8_t channel,
               bool start_dhcp_server = true, const void *ie_info = NULL, bool ap_sta_concur = false);
 
-    int stop(void) {}
+    int stop(void) {return 1;}
 
     int get_associated_client_list(void *client_list_buffer, uint16_t buffer_length);
 
     int register_event_handler(whd_event_handler_t softap_event_handler);
 
-    int unregister_event_handler(void) {}
+    int unregister_event_handler(void) {return 1;}
 
     nsapi_error_t set_blocking(bool blocking)
     {

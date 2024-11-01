@@ -71,6 +71,15 @@ public:
     return 0;
   }
 
+  /** Set the Wi-Fi network join timeout.
+   *
+   *  @param timeout   joint timeout in milliseconds (Default: 7000).
+   *  @return          NSAPI_ERROR_OK on success, or error code on failure.
+   */
+  nsapi_error_t set_timeout(uint32_t timeout) {
+    return NSAPI_ERROR_UNSUPPORTED;
+  }
+
   /** Gets the current radio signal strength for active connection
    *
    * @return          Connection strength in dBm (negative value)
